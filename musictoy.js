@@ -161,6 +161,16 @@ function initSynth(synthNet, piece)
         4
     );
 
+    if(window.experimental) {
+        window.experimental.datPeers.addEventListener('message', ({datPeer, message}) => {
+            console.log('message recieved', datPeer, message);
+            if(message.button) {
+              sequencer.click(message.button.x, message.button.y, false);
+            }
+            
+        });
+    }
+
     function redraw()
     {
         sequencer.draw(canvas, canvasCtx);
@@ -255,8 +265,8 @@ function initSynth(synthNet, piece)
     {
         var xPos = event.offsetX;
         var yPos = event.offsetY;
-
-        sequencer.click(xPos, yPos);
+        console.log('clicked', xPos, yPos);
+        sequencer.click(xPos, yPos, true);
 
         redraw();
     }
@@ -344,10 +354,13 @@ function Sequencer(
                 Sequencer.SQR_HEIGHT * row,
                 Sequencer.SQR_WIDTH,
                 Sequencer.SQR_HEIGHT,
-                function click()
+                function click(relay)
                 {
                     this.onState = !this.onState;
-
+                    console.log('button click', this);
+                    if(window.experimental && relay) {
+                      window.experimental.datPeers.broadcast({button: {x: this.x, y: this.y}});
+                    }
                     sequencer.render();
                 },
                 function draw(ctx)
@@ -506,7 +519,7 @@ Sequencer.prototype.makeButton = function (
 /**
 Click handling
 */
-Sequencer.prototype.click = function (x, y)
+Sequencer.prototype.click = function (x, y, relay)
 {
     for (var i = 0; i < this.buttons.length; ++i)
     {
@@ -514,7 +527,7 @@ Sequencer.prototype.click = function (x, y)
 
         if (x >= button.x && x < button.x + button.width &&
             y >= button.y && y < button.y + button.height)
-            button.click();
+            button.click(relay);
     }
 }
 
@@ -575,8 +588,6 @@ Sequencer.prototype.render = function ()
             continue;
 
         var beatNo = button.col / Sequencer.SQRS_PER_BEAT;
-
-        console.log(button.note.toString());
 
         this.piece.makeNote(
             button.track, 
